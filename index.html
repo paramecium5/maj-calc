@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>麻將點數計算</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     SETUP SCREEN
+══════════════════════════════════════════════════════ -->
+<div id="screen-setup" class="screen active">
+  <div class="setup-card">
+    <div class="setup-title">麻將點數計算</div>
+    <div class="setup-subtitle">RIICHI MAHJONG SCORE KEEPER</div>
+
+    <div class="setup-players">
+      <div class="setup-player-field">
+        <label>玩家 1（下家）</label>
+        <input id="setup-name-0" type="text" placeholder="玩家1">
+      </div>
+      <div class="setup-player-field">
+        <label>玩家 2（右家）</label>
+        <input id="setup-name-1" type="text" placeholder="玩家2">
+      </div>
+      <div class="setup-player-field">
+        <label>玩家 3（上家）</label>
+        <input id="setup-name-2" type="text" placeholder="玩家3">
+      </div>
+      <div class="setup-player-field">
+        <label>玩家 4（左家）</label>
+        <input id="setup-name-3" type="text" placeholder="玩家4">
+      </div>
+    </div>
+
+    <div class="setup-options">
+      <div class="setup-opt">
+        <label>遊戲設定</label>
+        <select id="setup-length">
+          <option value="east-south">東南戰</option>
+          <option value="east">東風戰</option>
+        </select>
+      </div>
+      <div class="setup-opt">
+        <label>持點</label>
+        <select id="setup-points">
+          <option value="25000">25,000点</option>
+          <option value="30000">30,000点</option>
+          <option value="35000">35,000点</option>
+        </select>
+      </div>
+      <div class="setup-opt">
+        <label>馬</label>
+        <select id="setup-uma">
+          <option value="20-10">20 / 10</option>
+          <option value="15-5">15 / 5</option>
+          <option value="10-5">10 / 5</option>
+          <option value="0">無</option>
+        </select>
+      </div>
+    </div>
+
+    <button id="btn-start" class="btn-start">開始遊戲</button>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════
+     GAME SCREEN
+══════════════════════════════════════════════════════ -->
+<div id="screen-game" class="screen">
+
+  <!-- Top player panel (rotated 180° inside CSS) -->
+  <div id="panel-top" class="player-panel panel-top">
+    <div class="pnl-wind-tile"></div>
+    <div class="pnl-info">
+      <div class="pnl-name"></div>
+      <div class="pnl-score"></div>
+    </div>
+    <div class="pnl-badges">
+      <div class="pnl-dealer">莊</div>
+      <div class="pnl-riichi-indicator">
+        <div class="riichi-stick-small"></div>
+        <span>立直</span>
+      </div>
+      <button class="btn-riichi" data-pid="2"></button>
+    </div>
+  </div>
+
+  <!-- Left player panel (rotated via CSS) -->
+  <div id="panel-left" class="player-panel panel-left">
+    <div class="pnl-wind-tile"></div>
+    <div class="pnl-info">
+      <div class="pnl-name"></div>
+      <div class="pnl-score"></div>
+    </div>
+    <div class="pnl-badges">
+      <div class="pnl-dealer">莊</div>
+      <div class="pnl-riichi-indicator">
+        <div class="riichi-stick-small"></div>
+        <span>立直</span>
+      </div>
+      <button class="btn-riichi" data-pid="3"></button>
+    </div>
+  </div>
+
+  <!-- Center info and action area -->
+  <div class="game-center">
+    <div class="center-inner">
+      <div class="center-compass">
+        <div id="info-round">東1局</div>
+        <div class="compass-sub">
+          <div id="honba-dots" class="honba-dots"></div>
+          <div id="info-honba" class="info-honba-text">0本場</div>
+        </div>
+      </div>
+
+      <div class="riichi-pool-row">
+        <div id="riichi-sticks-visual" class="riichi-sticks-visual"></div>
+        <div class="pool-label">供託</div>
+        <div id="info-riichi-pool">0</div>
+        <div class="pool-label">本</div>
+      </div>
+    </div>
+
+    <div class="center-actions">
+      <button id="btn-win" class="action-btn btn-win">
+        <span class="btn-label-main">和牌</span>
+        <span class="btn-label-sub">AGARI</span>
+      </button>
+      <button id="btn-draw" class="action-btn btn-draw">
+        <span class="btn-label-main">流局</span>
+        <span class="btn-label-sub">DRAW</span>
+      </button>
+      <button id="btn-chombo" class="action-btn btn-chombo">
+        <span class="btn-label-main">錯和</span>
+        <span class="btn-label-sub">CHOMBO</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Right player panel (rotated via CSS) -->
+  <div id="panel-right" class="player-panel panel-right">
+    <div class="pnl-wind-tile"></div>
+    <div class="pnl-info">
+      <div class="pnl-name"></div>
+      <div class="pnl-score"></div>
+    </div>
+    <div class="pnl-badges">
+      <div class="pnl-dealer">莊</div>
+      <div class="pnl-riichi-indicator">
+        <div class="riichi-stick-small"></div>
+        <span>立直</span>
+      </div>
+      <button class="btn-riichi" data-pid="1"></button>
+    </div>
+  </div>
+
+  <!-- Bottom player panel (normal orientation) -->
+  <div id="panel-bottom" class="player-panel panel-bottom">
+    <div class="pnl-wind-tile"></div>
+    <div class="pnl-info">
+      <div class="pnl-name"></div>
+      <div class="pnl-score"></div>
+    </div>
+    <div class="pnl-badges">
+      <div class="pnl-dealer">莊</div>
+      <div class="pnl-riichi-indicator">
+        <div class="riichi-stick-small"></div>
+        <span>立直</span>
+      </div>
+      <button class="btn-riichi" data-pid="0"></button>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════
+     WIN MODAL
+══════════════════════════════════════════════════════ -->
+<div id="modal-win" class="modal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <span class="modal-title">和牌輸入</span>
+      <button id="btn-win-close" class="modal-close">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="win-step-title" class="step-title"></div>
+      <div id="win-step-dots" class="step-dots">
+        <div class="step-dot"></div>
+        <div class="step-dot"></div>
+        <div class="step-dot"></div>
+        <div class="step-dot"></div>
+        <div class="step-dot"></div>
+        <div class="step-dot"></div>
+      </div>
+
+      <!-- Step 1: Select winner -->
+      <div id="win-step-1" class="win-step" style="display:none">
+        <div id="win-winner-btns" class="player-select-grid"></div>
+      </div>
+
+      <!-- Step 2: Ron / Tsumo -->
+      <div id="win-step-2" class="win-step" style="display:none">
+        <div class="win-type-btns">
+          <button id="btn-win-tsumo" class="win-type-btn btn-tsumo">
+            自摸
+            <small>TSUMO</small>
+          </button>
+          <button id="btn-win-ron" class="win-type-btn btn-ron">
+            榮和
+            <small>RON</small>
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 3: Select loser (ron) -->
+      <div id="win-step-3" class="win-step" style="display:none">
+        <div id="win-loser-btns" class="player-select-grid"></div>
+      </div>
+
+      <!-- Step 4: Han input -->
+      <div id="win-step-4" class="win-step" style="display:none">
+        <div id="win-han-btns" class="han-btn-grid"></div>
+        <div class="modal-footer" style="border:none;padding:0">
+          <button class="btn-back" id="btn-win-step-back">返回</button>
+          <button class="btn-confirm" id="btn-han-confirm">下一步</button>
+        </div>
+      </div>
+
+      <!-- Step 5: Fu input -->
+      <div id="win-step-5" class="win-step" style="display:none">
+        <div id="win-fu-btns" class="fu-btn-grid"></div>
+        <div class="modal-footer" style="border:none;padding:0">
+          <button class="btn-back" id="btn-win-step-back-5">返回</button>
+          <button class="btn-confirm" id="btn-fu-confirm">下一步</button>
+        </div>
+      </div>
+
+      <!-- Step 6: Confirm -->
+      <div id="win-step-6" class="win-step" style="display:none">
+        <div id="win-confirm-body"></div>
+        <div class="modal-footer" style="border:none;padding:0;margin-top:16px">
+          <button class="btn-back" id="btn-win-back">返回</button>
+          <button class="btn-confirm" id="btn-win-confirm">確定</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════
+     DRAW MODAL
+══════════════════════════════════════════════════════ -->
+<div id="modal-draw" class="modal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <span class="modal-title">流局  —  聽牌申告</span>
+      <button id="btn-draw-close" class="modal-close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="step-title">選擇聽牌的玩家</div>
+      <div id="draw-tenpai-btns" class="draw-player-grid"></div>
+      <div id="draw-preview"></div>
+    </div>
+    <div class="modal-footer">
+      <button id="btn-draw-confirm" class="btn-confirm">確定流局</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════
+     CHOMBO MODAL
+══════════════════════════════════════════════════════ -->
+<div id="modal-chombo" class="modal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <span class="modal-title">錯和  —  選擇對象</span>
+      <button id="btn-chombo-close" class="modal-close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="step-title">選擇錯和的玩家（滿貫支付）</div>
+      <div id="chombo-btns" class="chombo-btns-grid player-select-grid"></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════
+     RESULT MODAL
+══════════════════════════════════════════════════════ -->
+<div id="modal-result" class="modal">
+  <div class="modal-card modal-card--result">
+    <div class="modal-header">
+      <span id="result-title" class="result-title-text modal-title"></span>
+    </div>
+    <div class="modal-body">
+      <div id="result-body"></div>
+    </div>
+    <div class="modal-footer">
+      <button id="btn-result-ok" class="btn-result-ok">下一局</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════
+     END SCREEN
+══════════════════════════════════════════════════════ -->
+<div id="screen-end" class="screen">
+  <div class="end-title">遊戲結束</div>
+  <div id="end-round-label" class="end-round-label"></div>
+  <div class="end-card">
+    <div id="end-results"></div>
+  </div>
+  <div class="end-buttons">
+    <button id="btn-rematch" class="btn-end btn-rematch">同成員再戰</button>
+    <button id="btn-new-game" class="btn-end btn-new-game">新遊戲</button>
+  </div>
+</div>
+
+
+<script src="js/engine.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
