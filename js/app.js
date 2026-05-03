@@ -608,9 +608,21 @@ function calculateFu(details){
     items.push({ label: '聽牌型：邊張', value: 2 });
   }
 
-  if (isYakuhaiPair(details.pairTile, details.seatWind, details.roundWind)){
-    fu += 2;
-    items.push({ label: '役牌雀頭', value: 2 });
+  if (details.pairTile && details.pairTile.type === 'honor'){
+    const isDragon = details.pairTile.kind === 'dragon';
+    const isRoundWind = details.pairTile.kind === 'wind' && details.pairTile.wind === details.roundWind;
+    const isSeatWind = details.pairTile.kind === 'wind' && details.pairTile.wind === details.seatWind;
+    
+    if (isDragon || isRoundWind || isSeatWind){
+      // 連風檢查：同時是場風和自風
+      if (isRoundWind && isSeatWind){
+        fu += 4;
+        items.push({ label: '連風雀頭（場風+自風）', value: 4 });
+      } else {
+        fu += 2;
+        items.push({ label: '役牌雀頭', value: 2 });
+      }
+    }
   }
 
   for (const meld of details.melds){
@@ -622,10 +634,17 @@ function calculateFu(details){
     }
   }
 
-  const rawFu = fu;
-  const roundedFu = Math.ceil(rawFu / 10) * 10;
+  let rawFu = fu;
+  let roundedFu = Math.ceil(rawFu / 10) * 10;
   if (roundedFu !== rawFu){
     items.push({ label: '進位到10', value: roundedFu - rawFu });
+  }
+
+  // 副露30符規則：非門前和牌，若符數不是30，則調整為30
+  if (!details.isMenzen && roundedFu !== 30){
+    const adjustment = 30 - roundedFu;
+    items.push({ label: '副露調整（最低30符）', value: adjustment });
+    roundedFu = 30;
   }
 
   return { totalFu: roundedFu, items, rawFu, roundedFu };

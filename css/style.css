@@ -1154,13 +1154,13 @@ input, select {
   align-items: center;
   justify-content: center;
   padding: 4px;
-  background: var(--felt-inner);
+  background: #ffffff;
   border: 1px solid rgba(200,164,78,0.2);
   border-radius: 6px;
   transition: all 0.15s;
 }
 .tile-btn img { width: 32px; height: auto; display: block; }
-.tile-btn:hover { border-color: var(--gold); background: var(--felt-hover); }
+.tile-btn:hover { border-color: var(--gold); background: #f5f5f5; }
 .tile-btn.selected {
   border-color: var(--jade);
   box-shadow: 0 0 0 2px rgba(42,184,154,0.2);
