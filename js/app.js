@@ -16,6 +16,10 @@ const App = {
   drawData: { tenpaiIds: [] },
   pendingEvent: null,
   prevScores: null,
+  fuCalcResult: null,
+  fuModalReady: false,
+  fuActiveTarget: null,
+  fuReturnStep: null,
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -24,6 +28,57 @@ const App = {
 const $ = id => document.getElementById(id);
 const qs  = sel => document.querySelector(sel);
 const qsa = sel => document.querySelectorAll(sel);
+
+const TILE_OPTIONS = [
+  { value: '', label: '選擇牌' },
+  { value: 'm1', label: '1萬' }, { value: 'm2', label: '2萬' }, { value: 'm3', label: '3萬' },
+  { value: 'm4', label: '4萬' }, { value: 'm5', label: '5萬' }, { value: 'm6', label: '6萬' },
+  { value: 'm7', label: '7萬' }, { value: 'm8', label: '8萬' }, { value: 'm9', label: '9萬' },
+  { value: 'p1', label: '1筒' }, { value: 'p2', label: '2筒' }, { value: 'p3', label: '3筒' },
+  { value: 'p4', label: '4筒' }, { value: 'p5', label: '5筒' }, { value: 'p6', label: '6筒' },
+  { value: 'p7', label: '7筒' }, { value: 'p8', label: '8筒' }, { value: 'p9', label: '9筒' },
+  { value: 's1', label: '1索' }, { value: 's2', label: '2索' }, { value: 's3', label: '3索' },
+  { value: 's4', label: '4索' }, { value: 's5', label: '5索' }, { value: 's6', label: '6索' },
+  { value: 's7', label: '7索' }, { value: 's8', label: '8索' }, { value: 's9', label: '9索' },
+  { value: 'E', label: '東' }, { value: 'S', label: '南' }, { value: 'W', label: '西' }, { value: 'N', label: '北' },
+  { value: 'P', label: '白' }, { value: 'F', label: '發' }, { value: 'C', label: '中' },
+];
+
+const HONOR_MAP = {
+  E: { kind: 'wind', wind: 'east', label: '東' },
+  S: { kind: 'wind', wind: 'south', label: '南' },
+  W: { kind: 'wind', wind: 'west', label: '西' },
+  N: { kind: 'wind', wind: 'north', label: '北' },
+  P: { kind: 'dragon', dragon: 'white', label: '白' },
+  F: { kind: 'dragon', dragon: 'green', label: '發' },
+  C: { kind: 'dragon', dragon: 'red', label: '中' },
+};
+
+const TILE_ASSETS = {
+  m1: 'image/Man1.svg', m2: 'image/Man2.svg', m3: 'image/Man3.svg',
+  m4: 'image/Man4.svg', m5: 'image/Man5.svg', m6: 'image/Man6.svg',
+  m7: 'image/Man7.svg', m8: 'image/Man8.svg', m9: 'image/Man9.svg',
+  p1: 'image/Pin1.svg', p2: 'image/Pin2.svg', p3: 'image/Pin3.svg',
+  p4: 'image/Pin4.svg', p5: 'image/Pin5.svg', p6: 'image/Pin6.svg',
+  p7: 'image/Pin7.svg', p8: 'image/Pin8.svg', p9: 'image/Pin9.svg',
+  s1: 'image/Sou1.svg', s2: 'image/Sou2.svg', s3: 'image/Sou3.svg',
+  s4: 'image/Sou4.svg', s5: 'image/Sou5.svg', s6: 'image/Sou6.svg',
+  s7: 'image/Sou7.svg', s8: 'image/Sou8.svg', s9: 'image/Sou9.svg',
+  E: 'image/Ton.svg', S: 'image/Nan.svg', W: 'image/Shaa.svg', N: 'image/Pei.svg',
+  P: 'image/Haku.svg', F: 'image/Hatsu.svg', C: 'image/Chun.svg',
+};
+
+const TILE_LABELS = TILE_OPTIONS.reduce((acc, tile) => {
+  if (tile.value) acc[tile.value] = tile.label;
+  return acc;
+}, {});
+
+const TILE_GROUPS = [
+  { label: '萬子', tiles: ['m1','m2','m3','m4','m5','m6','m7','m8','m9'] },
+  { label: '筒子', tiles: ['p1','p2','p3','p4','p5','p6','p7','p8','p9'] },
+  { label: '索子', tiles: ['s1','s2','s3','s4','s5','s6','s7','s8','s9'] },
+  { label: '字牌', tiles: ['E','S','W','N','P','F','C'] },
+];
 
 function fmt(n){
   const abs = Math.abs(n);
@@ -36,6 +91,38 @@ function fmtDelta(n){
 function fmtFinal(n){
   const s = Math.abs(n).toFixed(1);
   return n >= 0 ? `+${s}` : `-${s}`;
+}
+
+function getTileInfo(value){
+  if (!value) return null;
+  if (HONOR_MAP[value]){
+    return { type: 'honor', ...HONOR_MAP[value] };
+  }
+  const suit = value[0];
+  const rank = parseInt(value.slice(1), 10);
+  const isTerminal = rank === 1 || rank === 9;
+  return {
+    type: 'suit',
+    suit,
+    rank,
+    isTerminal,
+    isYaochu: isTerminal,
+  };
+}
+
+function getTileLabel(value){
+  return TILE_LABELS[value] || value || '';
+}
+
+function getTileAsset(value){
+  return TILE_ASSETS[value] || '';
+}
+
+function isYakuhaiPair(tile, seatWind, roundWind){
+  if (!tile || tile.type !== 'honor') return false;
+  if (tile.kind === 'dragon') return true;
+  if (tile.kind === 'wind') return tile.wind === seatWind || tile.wind === roundWind;
+  return false;
 }
 
 function hideAllModals(){
@@ -158,6 +245,15 @@ function renderGame(){
       rBtn.dataset.pid = i;
       rBtn.classList.toggle('active', hasRiichi);
     }
+
+    const overlay = $(`rto-${i}`);
+    if (overlay){
+      if (hasRiichi){
+        overlay.classList.add('visible');
+      } else {
+        overlay.classList.remove('visible');
+      }
+    }
   }
 
   App.prevScores = g.players.map(p => p.score);
@@ -185,18 +281,380 @@ function renderRiichiSticks(count){
   const container = $('riichi-sticks-visual');
   if (!container) return;
   container.innerHTML = '';
-  const max = Math.min(count, 6);
+  const max = Math.min(count, 5);
   for (let i = 0; i < max; i++){
     const stick = document.createElement('div');
     stick.className = 'riichi-stick-icon';
     container.appendChild(stick);
   }
-  if (count > 6){
+  if (count > 5){
     const more = document.createElement('span');
     more.className = 'riichi-count-more';
     more.textContent = `×${count}`;
     container.appendChild(more);
   }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Auto Fu Modal
+// ─────────────────────────────────────────────────────────────
+function buildTileOptions(selectEl){
+  selectEl.innerHTML = '';
+  for (const opt of TILE_OPTIONS){
+    const o = document.createElement('option');
+    o.value = opt.value;
+    o.textContent = opt.label;
+    selectEl.appendChild(o);
+  }
+}
+
+function buildFuMeldRows(){
+  const container = $('fu-melds');
+  if (!container) return;
+  container.innerHTML = '';
+  for (let i = 0; i < 4; i++){
+    const row = document.createElement('div');
+    row.className = 'fu-meld-row';
+    row.innerHTML = `
+      <select id="fu-meld-${i}-type" class="fu-select">
+        <option value="shuntsu">順子</option>
+        <option value="pon">刻子</option>
+        <option value="kan">槓子</option>
+      </select>
+      <select id="fu-meld-${i}-open" class="fu-select">
+        <option value="open">明牌</option>
+        <option value="closed">暗牌</option>
+      </select>
+      <button id="fu-meld-${i}-tile" class="fu-tile-target" type="button" data-kind="meld" data-index="${i}">選擇牌</button>
+    `;
+    container.appendChild(row);
+    row.querySelector(`#fu-meld-${i}-tile`).addEventListener('click', () => {
+      setActiveFuTarget({ kind: 'meld', index: i });
+    });
+  }
+}
+
+function buildTileGrid(){
+  const grid = $('fu-tile-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  for (const group of TILE_GROUPS){
+    const groupEl = document.createElement('div');
+    groupEl.className = 'tile-group';
+    const row = document.createElement('div');
+    row.className = `tile-row${group.tiles.length === 7 ? ' honors' : ''}`;
+    const label = document.createElement('div');
+    label.className = 'tile-group-label';
+    label.textContent = group.label;
+    groupEl.appendChild(label);
+    groupEl.appendChild(row);
+
+    for (const value of group.tiles){
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'tile-btn';
+      btn.dataset.value = value;
+      btn.innerHTML = `<img src="${getTileAsset(value)}" alt="${getTileLabel(value)}">`;
+      btn.addEventListener('click', () => handleTilePick(value));
+      row.appendChild(btn);
+    }
+    grid.appendChild(groupEl);
+  }
+}
+
+function getFuTargetElement(target){
+  if (!target) return null;
+  if (target.kind === 'meld') return $(`fu-meld-${target.index}-tile`);
+  if (target.kind === 'pair') return $('fu-pair-tile');
+  return null;
+}
+
+function renderTileTarget(el, value){
+  if (!el) return;
+  const label = getTileLabel(value);
+  const asset = getTileAsset(value);
+  if (!value){
+    el.classList.remove('selected');
+    el.dataset.value = '';
+    el.innerHTML = el.dataset.kind === 'pair' ? '選擇雀頭' : '選擇牌';
+    return;
+  }
+  el.classList.add('selected');
+  el.dataset.value = value;
+  el.innerHTML = `<img src="${asset}" alt="${label}"><span>${label}</span>`;
+}
+
+function setActiveFuTarget(target){
+  App.fuActiveTarget = target;
+  qsa('.fu-tile-target').forEach(btn => btn.classList.remove('active'));
+  const el = getFuTargetElement(target);
+  if (el) el.classList.add('active');
+  const label = target.kind === 'meld'
+    ? `第 ${target.index + 1} 組面子`
+    : '雀頭';
+  $('fu-tile-target-label').textContent = `目前選擇：${label}`;
+  updateTileGridSelection();
+}
+
+function updateTileGridSelection(){
+  const value = App.fuActiveTarget ? getFuTargetElement(App.fuActiveTarget)?.dataset.value : '';
+  qsa('#fu-tile-grid .tile-btn').forEach(btn => {
+    btn.classList.toggle('selected', value && btn.dataset.value === value);
+  });
+}
+
+function handleTilePick(value){
+  if (!App.fuActiveTarget){
+    showToast('請先選擇要填入的欄位');
+    return;
+  }
+  const el = getFuTargetElement(App.fuActiveTarget);
+  if (!el || el.classList.contains('is-disabled')) return;
+  const current = el.dataset.value || '';
+  const nextValue = current === value ? '' : value;
+  renderTileTarget(el, nextValue);
+  updateTileGridSelection();
+}
+
+function clearActiveTile(){
+  if (!App.fuActiveTarget){
+    showToast('請先選擇要填入的欄位');
+    return;
+  }
+  const el = getFuTargetElement(App.fuActiveTarget);
+  if (!el || el.classList.contains('is-disabled')) return;
+  renderTileTarget(el, '');
+  updateTileGridSelection();
+}
+
+function initFuModal(){
+  if (App.fuModalReady) return;
+  buildFuMeldRows();
+  buildTileGrid();
+  const pairBtn = $('fu-pair-tile');
+  pairBtn.dataset.kind = 'pair';
+  pairBtn.addEventListener('click', () => setActiveFuTarget({ kind: 'pair' }));
+  $('fu-hand-type').addEventListener('change', updateFuHandTypeState);
+  App.fuModalReady = true;
+}
+
+function updateFuHandTypeState(){
+  const isChiitoi = $('fu-hand-type').value === 'chiitoi';
+  const menqian = $('fu-menqian');
+  if (isChiitoi){
+    menqian.value = 'yes';
+    menqian.disabled = true;
+  } else {
+    menqian.disabled = false;
+  }
+  qsa('#fu-melds select').forEach(s => { s.disabled = isChiitoi; });
+  qsa('.fu-tile-target').forEach(btn => {
+    btn.disabled = isChiitoi;
+    btn.classList.toggle('is-disabled', isChiitoi);
+  });
+  if (isChiitoi){
+    App.fuActiveTarget = null;
+    $('fu-tile-target-label').textContent = '七對子不需選牌';
+    updateTileGridSelection();
+  } else if (!App.fuActiveTarget) {
+    $('fu-tile-target-label').textContent = '請先選擇要填入的欄位';
+  }
+  $('fu-wait-type').disabled = isChiitoi;
+}
+
+function syncFuDefaults(){
+  const g = App.game;
+  const d = App.winData;
+  $('fu-hand-type').value = 'normal';
+  $('fu-menqian').value = 'yes';
+  $('fu-win-type').value = d.winType || 'tsumo';
+  $('fu-wait-type').value = 'ryanmen';
+  if (g){
+    $('fu-round-wind').value = g.roundWind || 'east';
+    if (d.winnerId !== null && d.winnerId !== undefined){
+      $('fu-seat-wind').value = g.getWind(d.winnerId);
+    } else {
+      $('fu-seat-wind').value = g.getWind(g.dealerIdx);
+    }
+  }
+  for (let i = 0; i < 4; i++){
+    $(`fu-meld-${i}-type`).value = 'shuntsu';
+    $(`fu-meld-${i}-open`).value = 'closed';
+    renderTileTarget($(`fu-meld-${i}-tile`), '');
+  }
+  renderTileTarget($('fu-pair-tile'), '');
+  $('fu-result').innerHTML = '';
+  App.fuCalcResult = null;
+  App.fuActiveTarget = null;
+  $('fu-tile-target-label').textContent = '請先選擇要填入的欄位';
+  updateTileGridSelection();
+  updateFuHandTypeState();
+}
+
+function openFuModal(){
+  if (!ensureGameReady()) return;
+  initFuModal();
+  syncFuDefaults();
+  App.fuReturnStep = App.winStep || 5;
+  showModal('modal-fu');
+}
+
+function readFuForm(){
+  const melds = [];
+  for (let i = 0; i < 4; i++){
+    const type = $(`fu-meld-${i}-type`).value;
+    const open = $(`fu-meld-${i}-open`).value === 'open';
+    const tileValue = $(`fu-meld-${i}-tile`).dataset.value || '';
+    melds.push({
+      type,
+      open,
+      tileValue,
+      tile: getTileInfo(tileValue),
+    });
+  }
+  return {
+    handType: $('fu-hand-type').value,
+    isMenzen: $('fu-menqian').value === 'yes',
+    winType: $('fu-win-type').value,
+    waitType: $('fu-wait-type').value,
+    roundWind: $('fu-round-wind').value,
+    seatWind: $('fu-seat-wind').value,
+    pairTileValue: $('fu-pair-tile').dataset.value || '',
+    pairTile: getTileInfo($('fu-pair-tile').dataset.value || ''),
+    melds,
+  };
+}
+
+function validateFuDetails(details){
+  if (details.handType === 'chiitoi') return true;
+  if (!details.pairTile){
+    showToast('請選擇雀頭');
+    return false;
+  }
+  for (let i = 0; i < details.melds.length; i++){
+    const m = details.melds[i];
+    if (m.type !== 'shuntsu' && !m.tile){
+      showToast(`請選擇第 ${i + 1} 組面子牌`);
+      return false;
+    }
+  }
+  return true;
+}
+
+function isPinfu(details){
+  if (details.handType !== 'normal') return false;
+  if (!details.isMenzen) return false;
+  if (details.waitType !== 'ryanmen') return false;
+  if (details.melds.some(m => m.type !== 'shuntsu')) return false;
+  if (isYakuhaiPair(details.pairTile, details.seatWind, details.roundWind)) return false;
+  return true;
+}
+
+function calcMeldFu(meld){
+  const tile = meld.tile;
+  if (!tile) return null;
+  const isYaochu = tile.type === 'honor' || tile.isTerminal;
+  let base = isYaochu ? 4 : 2;
+  if (!meld.open) base *= 2;
+  if (meld.type === 'kan') base *= 4;
+
+  const typeLabel = meld.type === 'pon'
+    ? (meld.open ? '明刻' : '暗刻')
+    : (meld.open ? '明槓' : '暗槓');
+  const tileLabel = isYaochu ? '幺九' : '中張';
+  return { value: base, label: `${typeLabel} ${tileLabel}` };
+}
+
+function calculateFu(details){
+  if (details.handType === 'chiitoi'){
+    return {
+      totalFu: 25,
+      items: [{ label: '七對子固定', value: 25 }],
+      rawFu: 25,
+      roundedFu: 25,
+    };
+  }
+
+  if (isPinfu(details)){
+    const fu = details.winType === 'ron' ? 30 : 20;
+    return {
+      totalFu: fu,
+      items: [{ label: details.winType === 'ron' ? '平和（門前榮和）' : '平和（自摸）', value: fu }],
+      rawFu: fu,
+      roundedFu: fu,
+    };
+  }
+
+  let fu = 20;
+  const items = [{ label: '起符', value: 20 }];
+
+  if (details.winType === 'tsumo'){
+    fu += 2;
+    items.push({ label: '自摸', value: 2 });
+  }
+  if (details.isMenzen && details.winType === 'ron'){
+    fu += 10;
+    items.push({ label: '門前榮和', value: 10 });
+  }
+
+  if (details.waitType === 'tanki'){
+    fu += 2;
+    items.push({ label: '聽牌型：單騎', value: 2 });
+  } else if (details.waitType === 'kanchan'){
+    fu += 2;
+    items.push({ label: '聽牌型：嵌張', value: 2 });
+  } else if (details.waitType === 'penchan'){
+    fu += 2;
+    items.push({ label: '聽牌型：邊張', value: 2 });
+  }
+
+  if (isYakuhaiPair(details.pairTile, details.seatWind, details.roundWind)){
+    fu += 2;
+    items.push({ label: '役牌雀頭', value: 2 });
+  }
+
+  for (const meld of details.melds){
+    if (meld.type === 'shuntsu') continue;
+    const detail = calcMeldFu(meld);
+    if (detail){
+      fu += detail.value;
+      items.push(detail);
+    }
+  }
+
+  const rawFu = fu;
+  const roundedFu = Math.ceil(rawFu / 10) * 10;
+  if (roundedFu !== rawFu){
+    items.push({ label: '進位到10', value: roundedFu - rawFu });
+  }
+
+  return { totalFu: roundedFu, items, rawFu, roundedFu };
+}
+
+function renderFuResult(result){
+  const container = $('fu-result');
+  if (!container) return;
+  if (!result){
+    container.innerHTML = '';
+    return;
+  }
+  let html = `<div><strong>總符數：${result.totalFu} 符</strong></div>`;
+  html += '<div class="fu-result-list">';
+  for (const item of result.items){
+    html += `<div class="fu-result-item"><span>${item.label}</span><span>${item.value} 符</span></div>`;
+  }
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function applyFuResult(result){
+  if (!result) return;
+  App.winData.fu = result.totalFu;
+  buildFuGrid(App.winData);
+  App.winStep = App.fuReturnStep || 5;
+  renderWinStep();
+  showModal('modal-win');
+  showToast(`已套用 ${result.totalFu} 符`);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -534,6 +992,7 @@ function updateDrawPreview(){
     html += `<div class="delta-row">
       <span class="dr-name">${p.name}</span>
       <span class="dr-delta ${cls}">${fmtDelta(dv)}</span>
+      <span class="dr-arrow ${cls}">${dv > 0 ? '▲' : dv < 0 ? '▼' : '—'}</span>
     </div>`;
   }
   html += '</div>';
@@ -726,10 +1185,40 @@ function bindGameEvents(){
     renderWinStep();
   });
 
+  // Auto Fu
+  $('btn-fu-auto').addEventListener('click', () => {
+    openFuModal();
+  });
+
   // Modal close buttons
   $('btn-win-close').addEventListener('click',    () => hideModal('modal-win'));
   $('btn-draw-close').addEventListener('click',   () => hideModal('modal-draw'));
   $('btn-chombo-close').addEventListener('click', () => hideModal('modal-chombo'));
+  $('btn-fu-close').addEventListener('click',     () => hideModal('modal-fu'));
+
+  $('btn-fu-calc').addEventListener('click', () => {
+    const details = readFuForm();
+    if (!validateFuDetails(details)) return;
+    const result = calculateFu(details);
+    App.fuCalcResult = result;
+    renderFuResult(result);
+  });
+
+  $('btn-fu-apply').addEventListener('click', () => {
+    let result = App.fuCalcResult;
+    if (!result){
+      const details = readFuForm();
+      if (!validateFuDetails(details)) return;
+      result = calculateFu(details);
+      App.fuCalcResult = result;
+      renderFuResult(result);
+    }
+    applyFuResult(result);
+  });
+
+  $('fu-tile-clear').addEventListener('click', () => {
+    clearActiveTile();
+  });
 
   // End screen
   $('btn-new-game').addEventListener('click', () => {

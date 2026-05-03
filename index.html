@@ -72,6 +72,14 @@
 ══════════════════════════════════════════════════════ -->
 <div id="screen-game" class="screen">
 
+  <!-- Table riichi stick overlays (雀魂風) -->
+  <div class="riichi-table-overlays">
+    <div class="rto-stick" id="rto-0"></div>
+    <div class="rto-stick" id="rto-1"></div>
+    <div class="rto-stick" id="rto-2"></div>
+    <div class="rto-stick" id="rto-3"></div>
+  </div>
+
   <!-- Top player panel (rotated 180° inside CSS) -->
   <div id="panel-top" class="player-panel panel-top">
     <div class="pnl-wind-tile"></div>
@@ -225,7 +233,7 @@
       <!-- Step 4: Han input -->
       <div id="win-step-4" class="win-step" style="display:none">
         <div id="win-han-btns" class="han-btn-grid"></div>
-        <div class="modal-footer" style="border:none;padding:0">
+        <div class="step-footer-inner">
           <button class="btn-back" id="btn-win-step-back">返回</button>
           <button class="btn-confirm" id="btn-han-confirm">下一步</button>
         </div>
@@ -234,8 +242,9 @@
       <!-- Step 5: Fu input -->
       <div id="win-step-5" class="win-step" style="display:none">
         <div id="win-fu-btns" class="fu-btn-grid"></div>
-        <div class="modal-footer" style="border:none;padding:0">
+        <div class="step-footer-inner">
           <button class="btn-back" id="btn-win-step-back-5">返回</button>
+          <button class="btn-back" id="btn-fu-auto">自動算符</button>
           <button class="btn-confirm" id="btn-fu-confirm">下一步</button>
         </div>
       </div>
@@ -243,7 +252,7 @@
       <!-- Step 6: Confirm -->
       <div id="win-step-6" class="win-step" style="display:none">
         <div id="win-confirm-body"></div>
-        <div class="modal-footer" style="border:none;padding:0;margin-top:16px">
+        <div class="step-footer-inner">
           <button class="btn-back" id="btn-win-back">返回</button>
           <button class="btn-confirm" id="btn-win-confirm">確定</button>
         </div>
@@ -309,6 +318,95 @@
 </div>
 
 
+<!-- AUTO FU MODAL -->
+<div id="modal-fu" class="modal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <span class="modal-title">自動算符</span>
+      <button id="btn-fu-close" class="modal-close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="step-title">輸入面子與條件</div>
+      <div class="fu-form">
+        <div class="fu-grid">
+          <div class="fu-field">
+            <label>手牌類型</label>
+            <select id="fu-hand-type" class="fu-select">
+              <option value="normal">一般（4面子+雀頭）</option>
+              <option value="chiitoi">七對子</option>
+            </select>
+          </div>
+          <div class="fu-field">
+            <label>門前</label>
+            <select id="fu-menqian" class="fu-select">
+              <option value="yes">是</option>
+              <option value="no">否</option>
+            </select>
+          </div>
+          <div class="fu-field">
+            <label>和牌方式</label>
+            <select id="fu-win-type" class="fu-select">
+              <option value="tsumo">自摸</option>
+              <option value="ron">榮和</option>
+            </select>
+          </div>
+          <div class="fu-field">
+            <label>聽牌型</label>
+            <select id="fu-wait-type" class="fu-select">
+              <option value="ryanmen">兩面</option>
+              <option value="kanchan">嵌張</option>
+              <option value="penchan">邊張</option>
+              <option value="tanki">單騎</option>
+            </select>
+          </div>
+          <div class="fu-field">
+            <label>場風</label>
+            <select id="fu-round-wind" class="fu-select">
+              <option value="east">東</option>
+              <option value="south">南</option>
+              <option value="west">西</option>
+              <option value="north">北</option>
+            </select>
+          </div>
+          <div class="fu-field">
+            <label>自風</label>
+            <select id="fu-seat-wind" class="fu-select">
+              <option value="east">東</option>
+              <option value="south">南</option>
+              <option value="west">西</option>
+              <option value="north">北</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="fu-section-title">面子（4組）</div>
+        <div id="fu-melds" class="fu-melds"></div>
+
+        <div class="fu-section-title">雀頭</div>
+        <div class="fu-pair">
+          <button id="fu-pair-tile" class="fu-tile-target" type="button">選擇雀頭</button>
+        </div>
+
+        <div class="fu-section-title">牌面選單</div>
+        <div class="tile-picker">
+          <div class="tile-picker-head">
+            <span id="fu-tile-target-label">請先選擇要填入的欄位</span>
+            <button id="fu-tile-clear" class="btn-back" type="button">清除</button>
+          </div>
+          <div id="fu-tile-grid" class="tile-grid"></div>
+        </div>
+
+        <div id="fu-result" class="fu-result"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="btn-fu-calc" class="btn-back">計算</button>
+      <button id="btn-fu-apply" class="btn-confirm">套用到符數</button>
+    </div>
+  </div>
+</div>
+
+
 <!-- ══════════════════════════════════════════════════════
      END SCREEN
 ══════════════════════════════════════════════════════ -->
@@ -323,6 +421,8 @@
     <button id="btn-new-game" class="btn-end btn-new-game">新遊戲</button>
   </div>
 </div>
+
+<div id="toast"></div>
 
 
 <script src="js/engine.js"></script>
