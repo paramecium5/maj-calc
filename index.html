@@ -348,6 +348,25 @@
 </div>
 
 <!-- HISTORY MODAL -->
+<!-- UNDO CONFIRM MODAL -->
+<div id="modal-undo" class="modal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <span class="modal-title">確認撤銷</span>
+      <button id="btn-undo-close" class="modal-close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="step-title">以下為將還原的分數變動</div>
+      <div id="undo-list" style="margin-top:12px; display:flex; flex-direction:column; gap:8px;">
+        <!-- populated dynamically: per-player delta and post-score -->
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="btn-undo-cancel" class="btn-back">取消</button>
+      <button id="btn-undo-confirm" class="btn-confirm">確定撤銷</button>
+    </div>
+  </div>
+</div>
 <div id="modal-history" class="modal">
   <div class="modal-card modal-card--history">
     <div class="modal-header">

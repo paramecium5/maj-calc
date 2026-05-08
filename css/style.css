@@ -1559,6 +1559,18 @@ input, select {
 .pts-positive { color: var(--jade); }
 .pts-negative { color: var(--crimson-light); }
 
+/* Undo modal list */
+.undo-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 6px;
+}
+.undo-player { font-size: 14px; color: var(--ivory-dim); }
+.undo-delta { font-family: var(--font-num); font-weight:600; }
+
 /* Shared buttons */
 .btn-back {
   flex: 0 0 auto;

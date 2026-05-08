@@ -1404,7 +1404,7 @@ function bindGameEvents(){
     clearActiveTile();
   });
 
-  // Undo button (require confirmation to avoid accidental undo)
+  // Undo button (open custom confirmation modal)
   $('btn-undo').addEventListener('click', () => {
     if (!ensureGameReady()) return;
     if (App.game.history.length === 0){
@@ -1412,15 +1412,42 @@ function bindGameEvents(){
       return;
     }
 
-    // Native confirm is simple and reliable across browsers
-    const ok = window.confirm('確定要撤銷上一個動作嗎？此操作會還原分數與局況。');
-    if (!ok) return;
+    const ev = App.game.history[App.game.history.length - 1];
+    // populate modal with per-player deltas and scores
+    const list = $('undo-list');
+    list.innerHTML = '';
+    const names = App.game.players.map(p => p.name);
+    const deltas = ev.deltas || [];
+    const scoresAfter = ev.scoreAfter || App.game.players.map(p => p.score);
+    for (let i = 0; i < names.length; i++){
+      const row = document.createElement('div');
+      row.className = 'undo-item';
+      const left = document.createElement('div');
+      left.className = 'undo-player';
+      left.textContent = names[i];
+      const right = document.createElement('div');
+      right.className = 'undo-delta ' + (deltas[i] > 0 ? 'pts-positive' : deltas[i] < 0 ? 'pts-negative' : '');
+      right.textContent = (deltas[i] == null ? '±0' : fmtDelta(deltas[i])) + ' → ' + fmt(scoresAfter[i]);
+      row.appendChild(left);
+      row.appendChild(right);
+      list.appendChild(row);
+    }
 
+    showModal('modal-undo');
+  });
+
+  // Undo modal buttons
+  $('btn-undo-confirm').addEventListener('click', () => {
+    hideModal('modal-undo');
     if (App.game.undoLastEvent()){
       renderGame();
       showToast('已撤銷上一個動作');
     }
   });
+  $('btn-undo-cancel').addEventListener('click', () => {
+    hideModal('modal-undo');
+  });
+  $('btn-undo-close').addEventListener('click', () => { hideModal('modal-undo'); });
 
   // History button
   $('btn-history').addEventListener('click', () => {
