@@ -16,26 +16,40 @@
     <div class="setup-title">麻將點數計算</div>
     <div class="setup-subtitle">RIICHI MAHJONG SCORE KEEPER</div>
 
-    <div class="setup-players">
-      <div class="setup-player-field">
-        <label>玩家 1（下家）</label>
+    <div class="setup-players" id="setup-players-container">
+      <div class="setup-player-field" id="player-field-0">
+        <label id="player-label-0">玩家 1（下家）</label>
         <input id="setup-name-0" type="text" placeholder="玩家1">
       </div>
-      <div class="setup-player-field">
-        <label>玩家 2（右家）</label>
+      <div class="setup-player-field" id="player-field-1">
+        <label id="player-label-1">玩家 2（右家）</label>
         <input id="setup-name-1" type="text" placeholder="玩家2">
       </div>
-      <div class="setup-player-field">
-        <label>玩家 3（上家）</label>
+      <div class="setup-player-field" id="player-field-2">
+        <label id="player-label-2">玩家 3（上家）</label>
         <input id="setup-name-2" type="text" placeholder="玩家3">
       </div>
-      <div class="setup-player-field">
-        <label>玩家 4（左家）</label>
+      <div class="setup-player-field" id="player-field-3">
+        <label id="player-label-3">玩家 4（左家）</label>
         <input id="setup-name-3" type="text" placeholder="玩家4">
       </div>
     </div>
 
     <div class="setup-options">
+      <div class="setup-opt">
+        <label>遊戲模式</label>
+        <select id="setup-mode">
+          <option value="four">四人麻將</option>
+          <option value="three">三人麻將</option>
+        </select>
+      </div>
+      <div class="setup-opt" id="setup-three-rule-wrap">
+        <label>三麻自摸</label>
+        <select id="setup-three-rule">
+          <option value="zimo-loss">自摸損</option>
+          <option value="plus1000">千點加符</option>
+        </select>
+      </div>
       <div class="setup-opt">
         <label>遊戲設定</label>
         <select id="setup-length">

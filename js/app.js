@@ -156,32 +156,89 @@ function ensureGameReady(){
 // ─────────────────────────────────────────────────────────────
 // Setup Screen
 // ─────────────────────────────────────────────────────────────
+function updatePlayerFieldsVisibility(){
+  const mode = $('setup-mode').value;
+  const numPlayers = mode === 'three' ? 3 : 4;
+  const threeRuleWrap = $('setup-three-rule-wrap');
+  
+  for (let i = 0; i < 4; i++){
+    const field = $(`player-field-${i}`);
+    if (field) field.style.display = i < numPlayers ? 'flex' : 'none';
+  }
+
+  if (threeRuleWrap) threeRuleWrap.style.display = mode === 'three' ? 'flex' : 'none';
+
+  const pointsSelect = $('setup-points');
+  if (pointsSelect){
+    if (mode === 'three' && pointsSelect.value === '25000') pointsSelect.value = '35000';
+  }
+}
+
 function initSetup(){
   const defaultNames = ['玩家一','玩家二','玩家三','玩家四'];
   for (let i = 0; i < 4; i++){
     $(`setup-name-${i}`).value = defaultNames[i];
   }
+  
+  // Add mode change listener
+  const modeSelect = $('setup-mode');
+  if (modeSelect){
+    modeSelect.addEventListener('change', updatePlayerFieldsVisibility);
+    updatePlayerFieldsVisibility();  // Initial call
+  }
+  
   $('btn-start').addEventListener('click', startGame);
 }
 
 function startGame(){
-  const names = [0,1,2,3].map(i => {
+  const mode = $('setup-mode').value;
+  const numPlayers = mode === 'three' ? 3 : 4;
+  
+  const names = [];
+  for (let i = 0; i < numPlayers; i++){
     const val = $(`setup-name-${i}`).value.trim();
-    return val || `玩家${i+1}`;
-  });
+    names.push(val || `玩家${i+1}`);
+  }
 
   const gameLength  = $('setup-length').value;
   const startPoints = parseInt($('setup-points').value) || 25000;
+  const returnPoints = numPlayers === 3 ? 40000 : 30000;
   const umaKey      = $('setup-uma').value;
-  const uma = {
-    '20-10': [20000, 10000,-10000,-20000],
-    '15-5':  [15000,  5000, -5000,-15000],
-    '10-5':  [10000,  5000, -5000,-10000],
-    '0':     [0, 0, 0, 0],
-  }[umaKey] || [20000,10000,-10000,-20000];
+  const threePlayerMode = numPlayers === 3 ? $('setup-three-rule').value : 'zimo-loss';
+  
+  let uma;
+  if (numPlayers === 3){
+    uma = {
+      '20-10': [10000, 0, -10000],
+      '15-5':  [7500, 0, -7500],
+      '10-5':  [5000, 0, -5000],
+      '0':     [0, 0, 0],
+    }[umaKey] || [10000, 0, -10000];
+  } else {
+    uma = {
+      '20-10': [20000, 10000,-10000,-20000],
+      '15-5':  [15000,  5000, -5000,-15000],
+      '10-5':  [10000,  5000, -5000,-10000],
+      '0':     [0, 0, 0, 0],
+    }[umaKey] || [20000,10000,-10000,-20000];
+  }
 
-  App.game = new MahjongGame({ names, gameLength, startPoints, uma });
+  App.game = new MahjongGame({ names, gameLength, startPoints, returnPoints, uma, numPlayers, threePlayerMode });
   App.prevScores = null;
+  
+  // Set game mode class for CSS
+  const gameScreen = $('screen-game');
+  gameScreen.classList.remove('mode-three', 'mode-four');
+  gameScreen.classList.add(numPlayers === 3 ? 'mode-three' : 'mode-four');
+  
+  // Set the riichi stick visibility for all 4 overlays (but only 3 are used in 3P mode)
+  for (let i = 0; i < 4; i++){
+    const rtoStick = $(`rto-${i}`);
+    if (rtoStick){
+      rtoStick.style.display = i < numPlayers ? 'block' : 'none';
+    }
+  }
+  
   renderGame();
   showScreen('screen-game');
 }
@@ -201,7 +258,7 @@ function renderGame(){
   renderRiichiSticks(g.riichiPool);
 
   // Player panels
-  for (let i = 0; i < 4; i++){
+  for (let i = 0; i < g.numPlayers; i++){
     const p       = g.players[i];
     const pos     = p.position;
     const wind    = g.getWind(i);
@@ -871,13 +928,13 @@ function renderWinConfirm(){
     html += `<div class="confirm-row"><span>供託收入</span><strong class="pts-positive">+${(g.riichiPool * 1000).toLocaleString()}</strong></div>`;
   }
   if (g.honba > 0){
-    const bonus = d.winType === 'ron' ? g.honba * 300 : g.honba * 100 * (winnerIsDealer ? 3 : 1);
+    const bonus = d.winType === 'ron' ? g.honba * 300 : g.honba * 100 * (winnerIsDealer ? (g.numPlayers - 1) : 1);
     html += `<div class="confirm-row"><span>本場加點</span><strong class="pts-positive">+${bonus.toLocaleString()}</strong></div>`;
   }
 
   // Delta table
   html += '<div class="delta-preview">';
-  for (let i = 0; i < 4; i++){
+  for (let i = 0; i < g.numPlayers; i++){
     const p  = g.players[i];
     const dv = deltas[i];
     const cls = dv > 0 ? 'pts-positive' : dv < 0 ? 'pts-negative' : '';
@@ -904,14 +961,14 @@ function renderWinConfirm(){
 }
 
 function computeDeltas(d, g, pmts){
-  const deltas = [0, 0, 0, 0];
+  const deltas = Array(g.numPlayers).fill(0);
   const winnerIsDealer = d.winnerId === g.dealerIdx;
 
   if (d.winType === 'ron'){
     deltas[d.winnerId] += pmts.loserPays;
     deltas[d.loserId]  -= pmts.loserPays;
   } else {
-    for (let i = 0; i < 4; i++){
+    for (let i = 0; i < g.numPlayers; i++){
       if (i === d.winnerId) continue;
       const amt = winnerIsDealer
         ? pmts.eachPays
@@ -928,7 +985,7 @@ function buildPlayerSelector(containerId, cb, excludeId = null){
   const g = App.game;
   const container = $(containerId);
   container.innerHTML = '';
-  for (let i = 0; i < 4; i++){
+  for (let i = 0; i < g.numPlayers; i++){
     const p   = g.players[i];
     const btn = document.createElement('button');
     const wind    = g.getWind(i);
@@ -955,7 +1012,7 @@ function openDrawModal(){
   const container = $('draw-tenpai-btns');
   container.innerHTML = '';
 
-  for (let i = 0; i < 4; i++){
+  for (let i = 0; i < g.numPlayers; i++){
     const p    = g.players[i];
     const wind = g.getWind(i);
     const isDealer = i === g.dealerIdx;
@@ -992,19 +1049,19 @@ function updateDrawPreview(){
   const g   = App.game;
   const ids = App.drawData.tenpaiIds;
   const tc  = ids.length;
-  const nc  = 4 - tc;
-  const deltas = [0, 0, 0, 0];
+  const nc  = g.numPlayers - tc;
+  const deltas = Array(g.numPlayers).fill(0);
 
-  if (tc > 0 && tc < 4){
+  if (tc > 0 && tc < g.numPlayers){
     const recv = 3000 / tc;
     const pay  = 3000 / nc;
-    for (let i = 0; i < 4; i++){
+    for (let i = 0; i < g.numPlayers; i++){
       deltas[i] = ids.includes(i) ? recv : -pay;
     }
   }
 
   let html = '<div class="delta-preview">';
-  for (let i = 0; i < 4; i++){
+  for (let i = 0; i < g.numPlayers; i++){
     const p  = g.players[i];
     const dv = deltas[i];
     const cls = dv > 0 ? 'pts-positive' : dv < 0 ? 'pts-negative' : '';
@@ -1047,8 +1104,8 @@ function showResultModal(ev){
     titleText = '流局';
     const tc = ev.tenpaiIds.length;
     if (tc === 0)      bodyHtml = '<div class="result-hand result-draw">全員未聽</div>';
-    else if (tc === 4) bodyHtml = '<div class="result-hand result-draw">全員聽牌</div>';
-    else               bodyHtml = `<div class="result-hand result-draw">聽牌 ${tc} 人 / 未聽 ${4-tc} 人</div>`;
+    else if (tc === g.numPlayers) bodyHtml = '<div class="result-hand result-draw">全員聽牌</div>';
+    else               bodyHtml = `<div class="result-hand result-draw">聽牌 ${tc} 人 / 未聽 ${g.numPlayers-tc} 人</div>`;
   } else if (ev.type === 'chombo'){
     titleText = '錯和';
     bodyHtml  = `<div class="result-hand result-chombo">${g.players[ev.pid].name}　錯和</div>`;
@@ -1056,7 +1113,7 @@ function showResultModal(ev){
 
   // Delta table
   bodyHtml += '<div class="result-deltas">';
-  for (let i = 0; i < 4; i++){
+  for (let i = 0; i < g.numPlayers; i++){
     const p     = g.players[i];
     const delta = ev.deltas[i];
     const score = ev.scoreAfter[i];

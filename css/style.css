@@ -1756,6 +1756,24 @@ input, select {
   color: var(--ivory-dim);
 }
 .rank-first  .end-rank-num { color: var(--gold); text-shadow: 0 0 12px rgba(200,164,78,0.5); }
+
+/* ══════════════════════════════════════════════════════════
+   Game Mode Specific Styles
+══════════════════════════════════════════════════════════ */
+
+/* Three-Player Mode */
+#screen-game.mode-three .panel-left {
+  display: none;
+}
+
+#screen-game.mode-three #rto-3 {
+  display: none;
+}
+
+/* Four-Player Mode (default) */
+#screen-game.mode-four .panel-left {
+  display: flex;
+}
 .rank-second .end-rank-num { color: #c8c8c8; }
 .rank-third  .end-rank-num { color: #cd8040; }
 .rank-fourth .end-rank-num { color: var(--ivory-dim); }

@@ -2,10 +2,12 @@
 
 // ── Wind constants ─────────────────────────────────────────
 const WINDS = ['east','south','west','north'];
+const WINDS_3P = ['east','south','west'];  // Three-player mahjong winds
 const WIND_KAN = { east:'東', south:'南', west:'西', north:'北' };
 const WIND_NAME = { east:'東家', south:'南家', west:'西家', north:'北家' };
+const WIND_NAME_3P = { east:'東家', south:'南家', west:'西家' };
 
-// ── Scoring helpers ────────────────────────────────────────
+// ── Scoring helpers for 4-player ───────────────────────────
 function ru100(n){ return Math.ceil(n / 100) * 100; }
 
 function getLimit(han, fu){
@@ -48,7 +50,7 @@ function calcRegularTable(han, fu){
  * Returns payment breakdown for a win.
  * All honba bonuses already included.
  */
-function calcPayments(han, fu, winnerIsDealer, winType, honba){
+function calcPayments(han, fu, winnerIsDealer, winType, honba, numPlayers = 4, threePlayerMode = 'zimo-loss'){
   const limit = getLimit(han, fu);
   let t;
 
@@ -68,16 +70,17 @@ function calcPayments(han, fu, winnerIsDealer, winType, honba){
       return { loserPays: pay, total: pay, winType, limit, han, fu };
     } else {
       const each = t.dealerTsumoEach + honbaTsumo;
-      return { eachPays: each, total: each * 3, winType, limit, han, fu };
+      return { eachPays: each, total: each * (numPlayers - 1), winType, limit, han, fu };
     }
   } else {
     if (winType === 'ron'){
       const pay = t.nonDealerRon + honbaRon;
       return { loserPays: pay, total: pay, winType, limit, han, fu };
     } else {
-      const dPay = t.tsumoDealer    + honbaTsumo;
-      const nPay = t.tsumoNonDealer + honbaTsumo;
-      return { dealerPays: dPay, nonDealerPays: nPay, total: dPay + nPay * 2, winType, limit, han, fu };
+      const extra = numPlayers === 3 && threePlayerMode === 'plus1000' ? 1000 : 0;
+      const dPay = t.tsumoDealer    + honbaTsumo + extra;
+      const nPay = t.tsumoNonDealer + honbaTsumo + extra;
+      return { dealerPays: dPay, nonDealerPays: nPay, total: dPay + nPay * (numPlayers - 2), winType, limit, han, fu };
     }
   }
 }
@@ -85,20 +88,25 @@ function calcPayments(han, fu, winnerIsDealer, winType, honba){
 // ── MahjongGame ────────────────────────────────────────────
 class MahjongGame {
   constructor(cfg){
+    this.numPlayers = cfg.numPlayers ?? 4;
     this.config = {
-      startPoints:  cfg.startPoints  ?? 25000,
-      returnPoints: cfg.returnPoints ?? 30000,
-      uma:          cfg.uma          ?? [20000, 10000, -10000, -20000],
+      startPoints:  cfg.startPoints  ?? (this.numPlayers === 3 ? 35000 : 25000),
+      returnPoints: cfg.returnPoints ?? (this.numPlayers === 3 ? 40000 : 30000),
+      uma:          cfg.uma          ?? (this.numPlayers === 3 
+        ? [10000, 0, -10000]  // 3P uma
+        : [20000, 10000, -10000, -20000]),  // 4P uma
       gameLength:   cfg.gameLength   ?? 'east-south',   // 'east' | 'east-south'
       endOnBust:    cfg.endOnBust    !== false,
+      threePlayerMode: cfg.threePlayerMode ?? 'zimo-loss',
     };
 
+    const winds = this.numPlayers === 3 ? ['bottom','right','top'] : ['bottom','right','top','left'];
     // Positions: [0]=bottom, [1]=right, [2]=top, [3]=left
     this.players = cfg.names.map((name, i) => ({
       id: i,
       name,
       score: this.config.startPoints,
-      position: ['bottom','right','top','left'][i],
+      position: winds[i],
     }));
 
     this.roundWind    = 'east';
@@ -115,7 +123,11 @@ class MahjongGame {
 
   /** Seat wind for a player relative to current dealer */
   getWind(pid){
-    return WINDS[(pid - this.dealerIdx + 4) % 4];
+    if (this.numPlayers === 3){
+      return WINDS_3P[(pid - this.dealerIdx + 3) % 3];
+    } else {
+      return WINDS[(pid - this.dealerIdx + 4) % 4];
+    }
   }
 
   getRoundLabel(){
@@ -153,15 +165,15 @@ class MahjongGame {
    */
   processWin(winnerId, loserId, han, fu, winType){
     const winnerIsDealer = winnerId === this.dealerIdx;
-    const pmts = calcPayments(han, fu, winnerIsDealer, winType, this.honba);
+    const pmts = calcPayments(han, fu, winnerIsDealer, winType, this.honba, this.numPlayers, this.config.threePlayerMode);
 
-    const deltas = [0, 0, 0, 0];
+    const deltas = Array(this.numPlayers).fill(0);
 
     if (winType === 'ron'){
       deltas[winnerId] += pmts.loserPays;
       deltas[loserId]  -= pmts.loserPays;
     } else {
-      for (let i = 0; i < 4; i++){
+      for (let i = 0; i < this.numPlayers; i++){
         if (i === winnerId) continue;
         const amt = winnerIsDealer
           ? pmts.eachPays
@@ -175,7 +187,7 @@ class MahjongGame {
     deltas[winnerId] += this.riichiPool * 1000;
 
     const scoreBefore = this.players.map(p => p.score);
-    for (let i = 0; i < 4; i++) this.players[i].score += deltas[i];
+    for (let i = 0; i < this.numPlayers; i++) this.players[i].score += deltas[i];
 
     const ev = {
       type: 'win',
@@ -208,21 +220,21 @@ class MahjongGame {
    * @param {number[]} tenpaiIds - player indices who are tenpai
    */
   processDraw(tenpaiIds){
-    const deltas = [0, 0, 0, 0];
+    const deltas = Array(this.numPlayers).fill(0);
     const tc = tenpaiIds.length;
-    const nc = 4 - tc;
+    const nc = this.numPlayers - tc;
 
-    if (tc > 0 && tc < 4){
+    if (tc > 0 && tc < this.numPlayers){
       const recv = 3000 / tc;
       const pay  = 3000 / nc;
-      for (let i = 0; i < 4; i++){
+      for (let i = 0; i < this.numPlayers; i++){
         if (tenpaiIds.includes(i)) deltas[i] += recv;
         else                       deltas[i] -= pay;
       }
     }
 
     const scoreBefore = this.players.map(p => p.score);
-    for (let i = 0; i < 4; i++) this.players[i].score += deltas[i];
+    for (let i = 0; i < this.numPlayers; i++) this.players[i].score += deltas[i];
 
     const dealerTenpai = tenpaiIds.includes(this.dealerIdx);
     const ev = {
@@ -251,17 +263,19 @@ class MahjongGame {
    */
   processChombo(pid){
     const isDealer  = pid === this.dealerIdx;
-    const penalty   = isDealer ? 12000 : 8000;
-    const eachRecv  = Math.floor(penalty / 3);
+    const penalty   = this.numPlayers === 3
+      ? (isDealer ? 16000 : 12000)
+      : (isDealer ? 12000 : 8000);
+    const eachRecv  = Math.floor(penalty / (this.numPlayers - 1));
 
-    const deltas = [0, 0, 0, 0];
+    const deltas = Array(this.numPlayers).fill(0);
     deltas[pid] -= penalty;
-    for (let i = 0; i < 4; i++){
+    for (let i = 0; i < this.numPlayers; i++){
       if (i !== pid) deltas[i] += eachRecv;
     }
 
     const scoreBefore = this.players.map(p => p.score);
-    for (let i = 0; i < 4; i++) this.players[i].score += deltas[i];
+    for (let i = 0; i < this.numPlayers; i++) this.players[i].score += deltas[i];
 
     const ev = {
       type: 'chombo',
@@ -276,7 +290,7 @@ class MahjongGame {
 
   _rotateDealer(){
     this.honba    = 0;
-    this.dealerIdx = (this.dealerIdx + 1) % 4;
+    this.dealerIdx = (this.dealerIdx + 1) % this.numPlayers;
 
     if (this.dealerIdx === 0){
       if (this.roundWind === 'east'){
@@ -324,4 +338,6 @@ window.getLimit = getLimit;
 window.LIMIT_LABEL = LIMIT_LABEL;
 window.WIND_KAN = WIND_KAN;
 window.WIND_NAME = WIND_NAME;
+window.WIND_NAME_3P = WIND_NAME_3P;
 window.WINDS = WINDS;
+window.WINDS_3P = WINDS_3P;
