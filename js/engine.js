@@ -21,6 +21,11 @@ function getLimit(han, fu){
   return null;
 }
 
+function getYakumanMultiplier(han){
+  if (han < 13) return 1;
+  return Math.max(1, Math.floor(han / 13));
+}
+
 const LIMIT_LABEL = {
   mangan:'滿貫', haneman:'跳滿', baiman:'倍滿',
   sanbaiman:'三倍滿', yakuman:'役滿'
@@ -52,10 +57,18 @@ function calcRegularTable(han, fu){
  */
 function calcPayments(han, fu, winnerIsDealer, winType, honba, numPlayers = 4, threePlayerMode = 'zimo-loss'){
   const limit = getLimit(han, fu);
+  const yakumanMultiplier = limit === 'yakuman' ? getYakumanMultiplier(han) : 1;
   let t;
 
   if (limit){
-    const [dR, dT, nR, tD, tN] = LIMIT_TABLE[limit];
+    let [dR, dT, nR, tD, tN] = LIMIT_TABLE[limit];
+    if (limit === 'yakuman' && yakumanMultiplier > 1){
+      dR *= yakumanMultiplier;
+      dT *= yakumanMultiplier;
+      nR *= yakumanMultiplier;
+      tD *= yakumanMultiplier;
+      tN *= yakumanMultiplier;
+    }
     t = { dealerRon:dR, dealerTsumoEach:dT, nonDealerRon:nR, tsumoDealer:tD, tsumoNonDealer:tN };
   } else {
     t = calcRegularTable(han, fu);
@@ -67,20 +80,20 @@ function calcPayments(han, fu, winnerIsDealer, winType, honba, numPlayers = 4, t
   if (winnerIsDealer){
     if (winType === 'ron'){
       const pay = t.dealerRon + honbaRon;
-      return { loserPays: pay, total: pay, winType, limit, han, fu };
+      return { loserPays: pay, total: pay, winType, limit, han, fu, yakumanMultiplier };
     } else {
       const each = t.dealerTsumoEach + honbaTsumo;
-      return { eachPays: each, total: each * (numPlayers - 1), winType, limit, han, fu };
+      return { eachPays: each, total: each * (numPlayers - 1), winType, limit, han, fu, yakumanMultiplier };
     }
   } else {
     if (winType === 'ron'){
       const pay = t.nonDealerRon + honbaRon;
-      return { loserPays: pay, total: pay, winType, limit, han, fu };
+      return { loserPays: pay, total: pay, winType, limit, han, fu, yakumanMultiplier };
     } else {
       const extra = numPlayers === 3 && threePlayerMode === 'plus1000' ? 1000 : 0;
       const dPay = t.tsumoDealer    + honbaTsumo + extra;
       const nPay = t.tsumoNonDealer + honbaTsumo + extra;
-      return { dealerPays: dPay, nonDealerPays: nPay, total: dPay + nPay * (numPlayers - 2), winType, limit, han, fu };
+      return { dealerPays: dPay, nonDealerPays: nPay, total: dPay + nPay * (numPlayers - 2), winType, limit, han, fu, yakumanMultiplier };
     }
   }
 }

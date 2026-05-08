@@ -104,6 +104,14 @@ function fmtTime(ms){
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+function getLimitDisplay(payments){
+  if (!payments || !payments.limit) return '';
+  if (payments.limit === 'yakuman' && payments.yakumanMultiplier > 1){
+    return `${payments.yakumanMultiplier}倍役滿`;
+  }
+  return LIMIT_LABEL[payments.limit] || '';
+}
+
 function getTileInfo(value){
   if (!value) return null;
   if (HONOR_MAP[value]){
@@ -839,7 +847,7 @@ function buildHanGrid(d){
   const categories = [
     { label: '一般番數', range: [1, 4], cls: 'han-normal' },
     { label: '限定役', range: [5, 12], cls: 'han-limit' },
-    { label: '役滿', range: [13, 13], cls: 'han-yakuman' },
+    { label: '役滿', values: [13, 26, 39], cls: 'han-yakuman' },
   ];
 
   for (const cat of categories){
@@ -851,15 +859,22 @@ function buildHanGrid(d){
     const row = document.createElement('div');
     row.className = 'han-row';
 
-    for (let h = cat.range[0]; h <= cat.range[1]; h++){
+    const values = cat.values || Array.from({ length: cat.range[1] - cat.range[0] + 1 }, (_, i) => cat.range[0] + i);
+    for (const h of values){
       const btn = document.createElement('button');
       btn.className = `han-btn ${cat.cls}${h === d.han ? ' selected' : ''}`;
       btn.dataset.han = h;
 
       let mainText, subText;
-      if (h === 13){
-        mainText = '役滿';
-        subText  = '';
+      if (h >= 13){
+        const yk = Math.floor(h / 13);
+        if (yk === 1){
+          mainText = '役滿';
+          subText  = '';
+        } else {
+          mainText = `${yk}倍役滿`;
+          subText  = `${h}番`;
+        }
       } else if (h >= 11){
         mainText = `${h}番`;
         subText  = '三倍滿';
@@ -931,7 +946,7 @@ function renderWinConfirm(){
   const winnerIsDealer = d.winnerId === g.dealerIdx;
   const pmts = calcPayments(d.han, d.fu, winnerIsDealer, d.winType, g.honba);
 
-  const limitStr = pmts.limit ? LIMIT_LABEL[pmts.limit] : '';
+  const limitStr = getLimitDisplay(pmts);
   const hanStr   = d.han >= 5
     ? `${d.han}番　${limitStr}`
     : `${d.han}番 ${d.fu}符　${limitStr}`;
@@ -1109,7 +1124,7 @@ function showResultModal(ev){
 
   if (ev.type === 'win'){
     const winner   = g.players[ev.winnerId];
-    const limitStr = ev.payments.limit ? LIMIT_LABEL[ev.payments.limit] : '';
+    const limitStr = getLimitDisplay(ev.payments);
     const hanStr   = ev.han >= 5
       ? `${ev.han}番　${limitStr}`
       : `${ev.han}番 ${ev.fu}符${limitStr ? '　' + limitStr : ''}`;
@@ -1240,9 +1255,9 @@ function showHistoryModal(){
     let eventDesc = '';
 
     if (ev.type === 'win'){
-      const winnerName = playerNames[ev.winnerId];
-      const loserName = ev.loserId !== null ? playerNames[ev.loserId] : '自摸';
-      eventDesc = `${LIMIT_LABEL[ev.payments.limit] || ''} ${ev.han}番${ev.fu}符 ${ev.winType === 'ron' ? '放銃' : '自摸'}`;
+      const limitStr = getLimitDisplay(ev.payments);
+      const handStr = ev.han >= 5 ? `${ev.han}番` : `${ev.han}番${ev.fu}符`;
+      eventDesc = `${limitStr ? limitStr + ' ' : ''}${handStr} ${ev.winType === 'ron' ? '放銃' : '自摸'}`;
     } else if (ev.type === 'draw'){
       if (ev.drawKind === 'abortive'){
         eventDesc = `途中流局 (${ev.reason === 'kyuushu' ? '九種九牌' : '四槓散了'})`;
