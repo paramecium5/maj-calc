@@ -235,7 +235,10 @@ function startGame(){
   for (let i = 0; i < 4; i++){
     const rtoStick = $(`rto-${i}`);
     if (rtoStick){
-      rtoStick.style.display = i < numPlayers ? 'block' : 'none';
+      // Active seats rely on the .visible class for showing riichi sticks.
+      // Keep only inactive seats force-hidden in 3P mode.
+      rtoStick.style.display = i < numPlayers ? '' : 'none';
+      if (i < numPlayers) rtoStick.classList.remove('visible');
     }
   }
   
