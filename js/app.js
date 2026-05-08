@@ -1206,19 +1206,22 @@ function showHistoryModal(){
   const g = App.game;
   const playerNames = g.players.map(p => p.name);
 
+  // Build header dynamically to include one column per player
+  const thead = document.querySelector('#history-table thead');
+  const headerCols = ['<th>局</th>', '<th>事件</th>'];
+  for (let pi = 0; pi < playerNames.length; pi++){
+    headerCols.push(`<th>${playerNames[pi]}</th>`);
+  }
+  thead.innerHTML = `<tr>${headerCols.join('')}</tr>`;
+
   for (let i = 0; i < g.history.length; i++){
     const ev = g.history[i];
     let eventDesc = '';
-    let playerInfo = '';
-    let pointsInfo = '';
 
     if (ev.type === 'win'){
       const winnerName = playerNames[ev.winnerId];
       const loserName = ev.loserId !== null ? playerNames[ev.loserId] : '自摸';
       eventDesc = `${LIMIT_LABEL[ev.payments.limit] || ''} ${ev.han}番${ev.fu}符 ${ev.winType === 'ron' ? '放銃' : '自摸'}`;
-      playerInfo = `${winnerName}和 ${loserName}`;
-      const delta = ev.deltas[ev.winnerId];
-      pointsInfo = delta >= 0 ? `+${delta}` : `${delta}`;
     } else if (ev.type === 'draw'){
       if (ev.drawKind === 'abortive'){
         eventDesc = `途中流局 (${ev.reason === 'kyuushu' ? '九種九牌' : '四槓散了'})`;
@@ -1226,33 +1229,25 @@ function showHistoryModal(){
         const tenpaiCt = ev.tenpaiIds.length;
         eventDesc = `流局 (${tenpaiCt}人聽、${g.numPlayers - tenpaiCt}人失聽)`;
       }
-      playerInfo = ev.dealerTenpai ? '東家聽牌' : '東家失聽';
-      pointsInfo = '-';
     } else if (ev.type === 'chombo'){
       const playerName = playerNames[ev.pid];
       eventDesc = '錯和';
-      playerInfo = `${playerName}錯和`;
-      const delta = ev.deltas[ev.pid];
-      pointsInfo = `${delta}`;
     }
 
     const row = document.createElement('tr');
-    // Build a string showing each player's delta (得失分)
-    const allDeltas = g.players.map((p, idx) => {
-      const d = ev.deltas && ev.deltas[idx] != null ? ev.deltas[idx] : 0;
-      return `${p.name} ${fmtDelta(d)}`;
-    }).join(' / ');
+    const cells = [];
+    cells.push(`<td>${ev.round}</td>`);
+    cells.push(`<td>${eventDesc}</td>`);
 
-    // Build a string showing each player's cumulative score after the event (合計)
-    const allScores = g.players.map((p, idx) => `${p.name} ${fmt(ev.scoreAfter[idx])}`).join(' / ');
+    // Per-player columns: show delta and cumulative score for each player
+    for (let pi = 0; pi < g.players.length; pi++){
+      const d = ev.deltas && ev.deltas[pi] != null ? ev.deltas[pi] : 0;
+      const s = ev.scoreAfter && ev.scoreAfter[pi] != null ? ev.scoreAfter[pi] : g.players[pi].score;
+      const cls = d > 0 ? 'pts-positive' : d < 0 ? 'pts-negative' : '';
+      cells.push(`<td><div class="hist-delta ${cls}">${fmtDelta(d)}</div><div class="hist-score">${fmt(s)}</div></td>`);
+    }
 
-    row.innerHTML = `
-      <td>${ev.round}</td>
-      <td>${eventDesc}</td>
-      <td>${playerInfo}</td>
-      <td>${allDeltas}</td>
-      <td>${allScores}</td>
-    `;
+    row.innerHTML = cells.join('');
     tbody.appendChild(row);
   }
 
