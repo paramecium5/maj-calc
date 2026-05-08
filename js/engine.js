@@ -164,6 +164,17 @@ class MahjongGame {
    * @param {'ron'|'tsumo'} winType
    */
   processWin(winnerId, loserId, han, fu, winType){
+    // Save game state before the event
+    const gameStateBefore = {
+      dealerIdx: this.dealerIdx,
+      honba: this.honba,
+      roundWind: this.roundWind,
+      roundNumber: this.roundNumber,
+      riichiPool: this.riichiPool,
+      riichiThisRound: new Set(this.riichiThisRound),
+      ended: this.ended,
+    };
+
     const winnerIsDealer = winnerId === this.dealerIdx;
     const pmts = calcPayments(han, fu, winnerIsDealer, winType, this.honba, this.numPlayers, this.config.threePlayerMode);
 
@@ -202,6 +213,7 @@ class MahjongGame {
       riichiPlayers: [...this.riichiThisRound],
       scoreBefore,
       scoreAfter: this.players.map(p => p.score),
+      gameStateBefore,
     };
 
     this.riichiPool = 0;
@@ -220,6 +232,17 @@ class MahjongGame {
    * @param {number[]} tenpaiIds - player indices who are tenpai
    */
   processDraw(tenpaiIds){
+    // Save game state before the event
+    const gameStateBefore = {
+      dealerIdx: this.dealerIdx,
+      honba: this.honba,
+      roundWind: this.roundWind,
+      roundNumber: this.roundNumber,
+      riichiPool: this.riichiPool,
+      riichiThisRound: new Set(this.riichiThisRound),
+      ended: this.ended,
+    };
+
     const deltas = Array(this.numPlayers).fill(0);
     const tc = tenpaiIds.length;
     const nc = this.numPlayers - tc;
@@ -246,6 +269,7 @@ class MahjongGame {
       riichiPlayers: [...this.riichiThisRound],
       scoreBefore,
       scoreAfter: this.players.map(p => p.score),
+      gameStateBefore,
     };
 
     this.history.push(ev);
@@ -262,6 +286,17 @@ class MahjongGame {
    * Dealer always keeps dealership and honba increases.
    */
   processAbortiveDraw(reason){
+    // Save game state before the event
+    const gameStateBefore = {
+      dealerIdx: this.dealerIdx,
+      honba: this.honba,
+      roundWind: this.roundWind,
+      roundNumber: this.roundNumber,
+      riichiPool: this.riichiPool,
+      riichiThisRound: new Set(this.riichiThisRound),
+      ended: this.ended,
+    };
+
     const deltas = Array(this.numPlayers).fill(0);
     const scoreBefore = this.players.map(p => p.score);
 
@@ -278,6 +313,7 @@ class MahjongGame {
       riichiPlayers: [...this.riichiThisRound],
       scoreBefore,
       scoreAfter: this.players.map(p => p.score),
+      gameStateBefore,
     };
 
     this.history.push(ev);
@@ -293,6 +329,17 @@ class MahjongGame {
    * The offending player pays mangan to all others.
    */
   processChombo(pid){
+    // Save game state before the event
+    const gameStateBefore = {
+      dealerIdx: this.dealerIdx,
+      honba: this.honba,
+      roundWind: this.roundWind,
+      roundNumber: this.roundNumber,
+      riichiPool: this.riichiPool,
+      riichiThisRound: new Set(this.riichiThisRound),
+      ended: this.ended,
+    };
+
     const isDealer  = pid === this.dealerIdx;
     const penalty   = this.numPlayers === 3
       ? (isDealer ? 16000 : 12000)
@@ -313,6 +360,7 @@ class MahjongGame {
       round: this.getRoundLabel(),
       pid, deltas, scoreBefore,
       scoreAfter: this.players.map(p => p.score),
+      gameStateBefore,
     };
     this.history.push(ev);
     // Round does not advance on chombo
@@ -343,6 +391,34 @@ class MahjongGame {
     if (this.ended) return true;
     if (this.config.endOnBust && this.players.some(p => p.score < 0)) return true;
     return false;
+  }
+
+  /**
+   * Undo the last event from game history.
+   * Restores player scores and game state.
+   * @returns {boolean} true if undo was successful, false if no history
+   */
+  undoLastEvent(){
+    if (this.history.length === 0) return false;
+
+    const ev = this.history.pop();
+
+    // Restore player scores from before the event
+    for (let i = 0; i < this.numPlayers; i++){
+      this.players[i].score = ev.scoreBefore[i];
+    }
+
+    // Restore game state from before the event
+    const before = ev.gameStateBefore;
+    this.dealerIdx    = before.dealerIdx;
+    this.honba        = before.honba;
+    this.roundWind    = before.roundWind;
+    this.roundNumber  = before.roundNumber;
+    this.riichiPool   = before.riichiPool;
+    this.riichiThisRound = new Set(before.riichiThisRound);
+    this.ended        = before.ended;
+
+    return true;
   }
 
   /** Compute final placements with uma and oka. */

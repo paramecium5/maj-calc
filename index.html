@@ -161,6 +161,15 @@
         <span class="btn-label-sub">CHOMBO</span>
       </button>
     </div>
+
+    <div class="secondary-actions">
+      <button id="btn-undo" class="secondary-btn btn-undo">
+        <span>撤銷</span>
+      </button>
+      <button id="btn-history" class="secondary-btn btn-history">
+        <span>歷史</span>
+      </button>
+    </div>
   </div>
 
   <!-- Right player panel (rotated via CSS) -->
@@ -333,6 +342,36 @@
   </div>
 </div>
 
+<!-- HISTORY MODAL -->
+<div id="modal-history" class="modal">
+  <div class="modal-card modal-card--history">
+    <div class="modal-header">
+      <span class="modal-title">遊戲歷史</span>
+      <button id="btn-history-close" class="modal-close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="history-table-container">
+        <table id="history-table" class="history-table">
+          <thead>
+            <tr>
+              <th>局</th>
+              <th>事件</th>
+              <th>玩家</th>
+              <th>得失分</th>
+              <th>合計</th>
+            </tr>
+          </thead>
+          <tbody id="history-tbody">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="btn-history-ok" class="btn-confirm">關閉</button>
+    </div>
+  </div>
+</div>
 
 <!-- AUTO FU MODAL -->
 <div id="modal-fu" class="modal">

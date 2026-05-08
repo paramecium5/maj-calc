@@ -1194,6 +1194,65 @@ function showEndScreen(){
 // ─────────────────────────────────────────────────────────────
 // Event Bindings
 // ─────────────────────────────────────────────────────────────
+function showHistoryModal(){
+  if (!App.game || App.game.history.length === 0){
+    showToast('沒有遊戲記錄');
+    return;
+  }
+
+  const tbody = $('history-tbody');
+  tbody.innerHTML = '';
+
+  const g = App.game;
+  const playerNames = g.players.map(p => p.name);
+
+  for (let i = 0; i < g.history.length; i++){
+    const ev = g.history[i];
+    let eventDesc = '';
+    let playerInfo = '';
+    let pointsInfo = '';
+
+    if (ev.type === 'win'){
+      const winnerName = playerNames[ev.winnerId];
+      const loserName = ev.loserId !== null ? playerNames[ev.loserId] : '自摸';
+      eventDesc = `${LIMIT_LABEL[ev.payments.limit] || ''} ${ev.han}番${ev.fu}符 ${ev.winType === 'ron' ? '放銃' : '自摸'}`;
+      playerInfo = `${winnerName}和 ${loserName}`;
+      const delta = ev.deltas[ev.winnerId];
+      pointsInfo = delta >= 0 ? `+${delta}` : `${delta}`;
+    } else if (ev.type === 'draw'){
+      if (ev.drawKind === 'abortive'){
+        eventDesc = `途中流局 (${ev.reason === 'kyuushu' ? '九種九牌' : '四槓散了'})`;
+      } else {
+        const tenpaiCt = ev.tenpaiIds.length;
+        eventDesc = `流局 (${tenpaiCt}人聽、${g.numPlayers - tenpaiCt}人失聽)`;
+      }
+      playerInfo = ev.dealerTenpai ? '東家聽牌' : '東家失聽';
+      pointsInfo = '-';
+    } else if (ev.type === 'chombo'){
+      const playerName = playerNames[ev.pid];
+      eventDesc = '錯和';
+      playerInfo = `${playerName}錯和`;
+      const delta = ev.deltas[ev.pid];
+      pointsInfo = `${delta}`;
+    }
+
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${ev.round}</td>
+      <td>${eventDesc}</td>
+      <td>${playerInfo}</td>
+      <td>${pointsInfo}</td>
+      <td>${fmt(ev.scoreAfter[0])}</td>
+    `;
+    tbody.appendChild(row);
+  }
+
+  showModal('modal-history');
+}
+
+// ─────────────────────────────────────────────────────────────
+// Event Bindings
+// ─────────────────────────────────────────────────────────────
 function bindGameEvents(){
   // Action buttons
   $('btn-win').addEventListener('click', openWinModal);
@@ -1316,6 +1375,32 @@ function bindGameEvents(){
 
   $('fu-tile-clear').addEventListener('click', () => {
     clearActiveTile();
+  });
+
+  // Undo button
+  $('btn-undo').addEventListener('click', () => {
+    if (!ensureGameReady()) return;
+    if (App.game.history.length === 0){
+      showToast('沒有可以撤銷的動作');
+      return;
+    }
+    if (App.game.undoLastEvent()){
+      renderGame();
+      showToast('已撤銷上一個動作');
+    }
+  });
+
+  // History button
+  $('btn-history').addEventListener('click', () => {
+    showHistoryModal();
+  });
+
+  // History modal close
+  $('btn-history-close').addEventListener('click', () => {
+    hideModal('modal-history');
+  });
+  $('btn-history-ok').addEventListener('click', () => {
+    hideModal('modal-history');
   });
 
   // End screen
