@@ -1102,10 +1102,15 @@ function showResultModal(ev){
     }
   } else if (ev.type === 'draw'){
     titleText = '流局';
-    const tc = ev.tenpaiIds.length;
-    if (tc === 0)      bodyHtml = '<div class="result-hand result-draw">全員未聽</div>';
-    else if (tc === g.numPlayers) bodyHtml = '<div class="result-hand result-draw">全員聽牌</div>';
-    else               bodyHtml = `<div class="result-hand result-draw">聽牌 ${tc} 人 / 未聽 ${g.numPlayers-tc} 人</div>`;
+    if (ev.drawKind === 'abortive'){
+      const label = ev.reason === 'kyuushu' ? '九種九牌' : (ev.reason === 'suukantsu' ? '四槓散了' : '途中流局');
+      bodyHtml = `<div class="result-hand result-draw">${label}</div>`;
+    } else {
+      const tc = ev.tenpaiIds.length;
+      if (tc === 0)      bodyHtml = '<div class="result-hand result-draw">全員未聽</div>';
+      else if (tc === g.numPlayers) bodyHtml = '<div class="result-hand result-draw">全員聽牌</div>';
+      else               bodyHtml = `<div class="result-hand result-draw">聽牌 ${tc} 人 / 未聽 ${g.numPlayers-tc} 人</div>`;
+    }
   } else if (ev.type === 'chombo'){
     titleText = '錯和';
     bodyHtml  = `<div class="result-hand result-chombo">${g.players[ev.pid].name}　錯和</div>`;
@@ -1194,6 +1199,20 @@ function bindGameEvents(){
   $('btn-draw-confirm').addEventListener('click', () => {
     if (!ensureGameReady()) return;
     const ev = App.game.processDraw(App.drawData.tenpaiIds);
+    hideModal('modal-draw');
+    showResultModal(ev);
+  });
+
+  $('btn-draw-kyuushu').addEventListener('click', () => {
+    if (!ensureGameReady()) return;
+    const ev = App.game.processAbortiveDraw('kyuushu');
+    hideModal('modal-draw');
+    showResultModal(ev);
+  });
+
+  $('btn-draw-suukantsu').addEventListener('click', () => {
+    if (!ensureGameReady()) return;
+    const ev = App.game.processAbortiveDraw('suukantsu');
     hideModal('modal-draw');
     showResultModal(ev);
   });

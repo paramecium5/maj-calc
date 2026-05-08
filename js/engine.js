@@ -258,6 +258,37 @@ class MahjongGame {
   }
 
   /**
+   * Process an abortive draw (途中流局), e.g. 九種九牌 or 四槓散了.
+   * Dealer always keeps dealership and honba increases.
+   */
+  processAbortiveDraw(reason){
+    const deltas = Array(this.numPlayers).fill(0);
+    const scoreBefore = this.players.map(p => p.score);
+
+    const ev = {
+      type: 'draw',
+      drawKind: 'abortive',
+      reason,
+      round: this.getRoundLabel(),
+      honba: this.honba,
+      tenpaiIds: [],
+      dealerTenpai: true,
+      deltas,
+      riichiPool: this.riichiPool,
+      riichiPlayers: [...this.riichiThisRound],
+      scoreBefore,
+      scoreAfter: this.players.map(p => p.score),
+    };
+
+    this.history.push(ev);
+    this.riichiThisRound.clear();
+    // Riichi pool stays on table, abortive draw is always renchan.
+    this.honba++;
+    if (this._checkEnd()) this.ended = true;
+    return ev;
+  }
+
+  /**
    * Process a chombo (誤和了 / 錯和).
    * The offending player pays mangan to all others.
    */
