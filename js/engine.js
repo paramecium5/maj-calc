@@ -116,6 +116,7 @@ class MahjongGame {
     this.riichiPool   = 0;
     this.riichiThisRound = new Set();
     this.history      = [];
+    this.startTime    = Date.now();  // Game start time for timer
     this.ended        = false;
   }
 
@@ -200,6 +201,7 @@ class MahjongGame {
     const scoreBefore = this.players.map(p => p.score);
     for (let i = 0; i < this.numPlayers; i++) this.players[i].score += deltas[i];
 
+    const elapsedMs = Date.now() - this.startTime;
     const ev = {
       type: 'win',
       round: this.getRoundLabel(),
@@ -214,6 +216,7 @@ class MahjongGame {
       scoreBefore,
       scoreAfter: this.players.map(p => p.score),
       gameStateBefore,
+      timestamp: elapsedMs,
     };
 
     this.riichiPool = 0;
@@ -260,6 +263,7 @@ class MahjongGame {
     for (let i = 0; i < this.numPlayers; i++) this.players[i].score += deltas[i];
 
     const dealerTenpai = tenpaiIds.includes(this.dealerIdx);
+    const elapsedMs = Date.now() - this.startTime;
     const ev = {
       type: 'draw',
       round: this.getRoundLabel(),
@@ -270,6 +274,7 @@ class MahjongGame {
       scoreBefore,
       scoreAfter: this.players.map(p => p.score),
       gameStateBefore,
+      timestamp: elapsedMs,
     };
 
     this.history.push(ev);
@@ -300,6 +305,7 @@ class MahjongGame {
     const deltas = Array(this.numPlayers).fill(0);
     const scoreBefore = this.players.map(p => p.score);
 
+    const elapsedMs = Date.now() - this.startTime;
     const ev = {
       type: 'draw',
       drawKind: 'abortive',
@@ -314,6 +320,7 @@ class MahjongGame {
       scoreBefore,
       scoreAfter: this.players.map(p => p.score),
       gameStateBefore,
+      timestamp: elapsedMs,
     };
 
     this.history.push(ev);
@@ -355,12 +362,14 @@ class MahjongGame {
     const scoreBefore = this.players.map(p => p.score);
     for (let i = 0; i < this.numPlayers; i++) this.players[i].score += deltas[i];
 
+    const elapsedMs = Date.now() - this.startTime;
     const ev = {
       type: 'chombo',
       round: this.getRoundLabel(),
       pid, deltas, scoreBefore,
       scoreAfter: this.players.map(p => p.score),
       gameStateBefore,
+      timestamp: elapsedMs,
     };
     this.history.push(ev);
     // Round does not advance on chombo

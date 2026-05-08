@@ -20,6 +20,7 @@ const App = {
   fuModalReady: false,
   fuActiveTarget: null,
   fuReturnStep: null,
+  timerInterval: null,  // Timer interval ID
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -91,6 +92,16 @@ function fmtDelta(n){
 function fmtFinal(n){
   const s = Math.abs(n).toFixed(1);
   return n >= 0 ? `+${s}` : `-${s}`;
+}
+function fmtTime(ms){
+  const totalSecs = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSecs / 3600);
+  const mins = Math.floor((totalSecs % 3600) / 60);
+  const secs = totalSecs % 60;
+  if (hours > 0){
+    return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
 function getTileInfo(value){
@@ -241,6 +252,16 @@ function startGame(){
       if (i < numPlayers) rtoStick.classList.remove('visible');
     }
   }
+
+  // Start timer updates
+  if (App.timerInterval) clearInterval(App.timerInterval);
+  App.timerInterval = setInterval(() => {
+    if (App.game && !App.game.ended){
+      const elapsedMs = Date.now() - App.game.startTime;
+      const timerEl = $('info-timer');
+      if (timerEl) timerEl.textContent = fmtTime(elapsedMs);
+    }
+  }, 1000);
   
   renderGame();
   showScreen('screen-game');
@@ -1208,7 +1229,7 @@ function showHistoryModal(){
 
   // Build header dynamically to include one column per player
   const thead = document.querySelector('#history-table thead');
-  const headerCols = ['<th>局</th>', '<th>事件</th>'];
+  const headerCols = ['<th>時間</th>', '<th>局</th>', '<th>事件</th>'];
   for (let pi = 0; pi < playerNames.length; pi++){
     headerCols.push(`<th>${playerNames[pi]}</th>`);
   }
@@ -1236,6 +1257,8 @@ function showHistoryModal(){
 
     const row = document.createElement('tr');
     const cells = [];
+    const timeStr = ev.timestamp !== undefined ? fmtTime(ev.timestamp) : '-';
+    cells.push(`<td>${timeStr}</td>`);
     cells.push(`<td>${ev.round}</td>`);
     cells.push(`<td>${eventDesc}</td>`);
 
