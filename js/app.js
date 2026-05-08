@@ -1404,13 +1404,18 @@ function bindGameEvents(){
     clearActiveTile();
   });
 
-  // Undo button
+  // Undo button (require confirmation to avoid accidental undo)
   $('btn-undo').addEventListener('click', () => {
     if (!ensureGameReady()) return;
     if (App.game.history.length === 0){
       showToast('沒有可以撤銷的動作');
       return;
     }
+
+    // Native confirm is simple and reliable across browsers
+    const ok = window.confirm('確定要撤銷上一個動作嗎？此操作會還原分數與局況。');
+    if (!ok) return;
+
     if (App.game.undoLastEvent()){
       renderGame();
       showToast('已撤銷上一個動作');
