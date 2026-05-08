@@ -1237,12 +1237,21 @@ function showHistoryModal(){
     }
 
     const row = document.createElement('tr');
+    // Build a string showing each player's delta (得失分)
+    const allDeltas = g.players.map((p, idx) => {
+      const d = ev.deltas && ev.deltas[idx] != null ? ev.deltas[idx] : 0;
+      return `${p.name} ${fmtDelta(d)}`;
+    }).join(' / ');
+
+    // Build a string showing each player's cumulative score after the event (合計)
+    const allScores = g.players.map((p, idx) => `${p.name} ${fmt(ev.scoreAfter[idx])}`).join(' / ');
+
     row.innerHTML = `
       <td>${ev.round}</td>
       <td>${eventDesc}</td>
       <td>${playerInfo}</td>
-      <td>${pointsInfo}</td>
-      <td>${fmt(ev.scoreAfter[0])}</td>
+      <td>${allDeltas}</td>
+      <td>${allScores}</td>
     `;
     tbody.appendChild(row);
   }
